@@ -1,0 +1,10 @@
+Room Number: 101, Capacity: 4, Occupied: false
+Room Number: 102, Capacity: 4, Occupied: false
+Room Number: 103, Capacity: 4, Occupied: false
+Room Number: 104, Capacity: 4, Occupied: false
+Room Number: 105, Capacity: 4, Occupied: false
+Room Number: 106, Capacity: 4, Occupied: false
+Room Number: 107, Capacity: 4, Occupied: false
+Room Number: 108, Capacity: 4, Occupied: false
+Room Number: 109, Capacity: 4, Occupied: false
+Room Number: 110, Capacity: 4, Occupied: false

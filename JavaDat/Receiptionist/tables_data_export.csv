@@ -1,0 +1,11 @@
+Table Number,Capacity,Occupied,Food ID,Food Name,Food Price
+1,4,Yes,7,Sushi,15.99
+10,4,Yes,7,Sushi,15.99
+2,4,No,0,null,0.0
+3,4,No,0,null,0.0
+4,4,No,0,null,0.0
+5,4,No,0,null,0.0
+6,4,No,0,null,0.0
+7,4,No,0,null,0.0
+8,4,No,0,null,0.0
+9,4,No,0,null,0.0

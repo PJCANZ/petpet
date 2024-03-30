@@ -1,0 +1,664 @@
+package receiptionist;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class Receiptionist extends JFrame implements ActionListener {
+    static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+    static final String DB_URL = "jdbc:mysql://localhost/lodgeandeat";
+    static final String USER = "root";
+    static final String PASS = "";
+
+    private JButton orderFoodButton, reserveRoomButton, exitButton, logOutTableButton, logOutRoomButton;
+    private Connection conn;
+    private String customerName;
+    private JButton exportButton;
+    private JButton exportRoomButton;
+    private JButton showFoodDetailsButton;
+    private JTextField companyNameField, addressField, dateField; // Fields for company name, address, and date
+    private JButton exportReportButton;
+    private JButton displayDataButton;
+    
+
+
+    public Receiptionist() {
+        setTitle("Receptionist");
+        setSize(800, 600);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        // Connect to database
+        try {
+            Class.forName(JDBC_DRIVER);
+            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            createDatabaseTables(); // Ensure tables exist
+            insertSampleData(); // Insert sample data
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    
+                // Create main panel
+                JPanel mainPanel = new JPanel();
+                mainPanel.setLayout(new GridLayout(7, 1)); // Reduced grid layout since company name and address fields are removed
+        
+                // Add buttons to main panel
+                orderFoodButton = new JButton("Order Food");
+                orderFoodButton.addActionListener(this);
+                mainPanel.add(orderFoodButton);
+        
+                reserveRoomButton = new JButton("Reserve Room");
+                reserveRoomButton.addActionListener(this);
+                mainPanel.add(reserveRoomButton);
+        
+                showFoodDetailsButton = new JButton("Show Food Details");
+                showFoodDetailsButton.addActionListener(this);
+                mainPanel.add(showFoodDetailsButton);
+        
+                logOutTableButton = new JButton("Log Out Table");
+                logOutTableButton.addActionListener(this);
+                mainPanel.add(logOutTableButton);
+        
+                logOutRoomButton = new JButton("Log Out Room");
+                logOutRoomButton.addActionListener(this);
+                mainPanel.add(logOutRoomButton);
+        
+                exportReportButton = new JButton("Export Report");
+exportReportButton.addActionListener(this);
+mainPanel.add(exportReportButton);
+
+displayDataButton = new JButton("Display Data");
+displayDataButton.addActionListener(this);
+mainPanel.add(displayDataButton);
+
+
+        
+                exitButton = new JButton("Exit");
+                exitButton.addActionListener(this);
+                mainPanel.add(exitButton);
+        
+                add(mainPanel);
+                setVisible(true);
+            }
+        
+private void createDatabaseTables() {
+    try {
+        createDatabaseTables(); // Create database before creating tables
+        Statement stmt = conn.createStatement();
+
+        // Create Tables table
+        String createTablesTableSQL = "CREATE TABLE IF NOT EXISTS Tables ("
+                + "TableID INT AUTO_INCREMENT PRIMARY KEY,"
+                + "TableNumber INT NOT NULL,"
+                + "Capacity INT NOT NULL,"
+                + "IsOccupied BOOLEAN NOT NULL"
+                + ")";
+        stmt.executeUpdate(createTablesTableSQL);
+
+        // Create Rooms table
+        String createRoomsTableSQL = "CREATE TABLE IF NOT EXISTS Rooms ("
+                + "RoomID INT AUTO_INCREMENT PRIMARY KEY,"
+                + "RoomNumber INT NOT NULL,"
+                + "Capacity INT NOT NULL,"
+                + "IsOccupied BOOLEAN NOT NULL"
+                + ")";
+        stmt.executeUpdate(createRoomsTableSQL);
+
+        // Create CompanyData table
+        String createCompanyDataTableSQL = "CREATE TABLE IF NOT EXISTS CompanyData ("
+                + "ID INT AUTO_INCREMENT PRIMARY KEY,"
+                + "CompanyName VARCHAR(255) NOT NULL,"
+                + "Address VARCHAR(255) NOT NULL,"
+                + "Date DATE NOT NULL"
+                + ")";
+        stmt.executeUpdate(createCompanyDataTableSQL);
+
+        stmt.close();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+
+   
+    
+    
+    private void generateCompanyDataTable() {
+        try {
+            FileWriter writer = new FileWriter("company_data.txt");
+            // Write company data
+            writer.write("Company Name: Live Eat and Lodge\n");
+            writer.write("Address: Gumok, Mias, Katipunan, Zamboanga del Norte\n");
+            writer.write("Date: " + java.time.LocalDate.now() + "\n");
+            // Close the writer
+            writer.close();
+            JOptionPane.showMessageDialog(this, "Company data table generated successfully.", "Generation Successful", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to generate company data table.", "Generation Failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    public int displayFoodMenuAndGetChoice() {
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM Food");
+
+            List<String> foodNames = new ArrayList<>();
+            while (rs.next()) {
+                foodNames.add(rs.getString("Name"));
+            }
+
+            rs.close();
+            stmt.close();
+
+            // Convert list of food names to array for use in JOptionPane
+            Object[] options = foodNames.toArray();
+
+            // Display food options
+            int choice = JOptionPane.showOptionDialog(null, "Choose a food item", "Food Menu", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+
+            // Increment choice by 1 to match with FoodID
+            return choice + 1;
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to fetch food menu.");
+            return 0; // Return 0 indicating failure
+        }
+    }
+
+    public void displayAvailableTables() {
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM Tables");
+
+            DefaultTableModel model = new DefaultTableModel(new Object[]{"Table Number", "Capacity", "Availability"}, 0);
+            while (rs.next()) {
+                String availability = rs.getBoolean("IsOccupied") ? "Unavailable" : "Available";
+                model.addRow(new Object[]{rs.getInt("TableNumber"), rs.getInt("Capacity"), availability});
+            }
+            JTable table = new JTable(model);
+            JScrollPane scrollPane = new JScrollPane(table);
+            JOptionPane.showMessageDialog(null, scrollPane, "Available Tables", JOptionPane.PLAIN_MESSAGE);
+
+            rs.close();
+            stmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to fetch available tables.");
+        }
+    }
+
+    public void displayAvailableRooms() {
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM Rooms");
+
+            DefaultTableModel model = new DefaultTableModel(new Object[]{"Room Number", "Capacity", "Availability"}, 0);
+            while (rs.next()) {
+                String availability = rs.getBoolean("IsOccupied") ? "Unavailable" : "Available";
+                model.addRow(new Object[]{rs.getInt("RoomNumber"), rs.getInt("Capacity"), availability});
+            }
+            JTable table = new JTable(model);
+            JScrollPane scrollPane = new JScrollPane(table);
+            JOptionPane.showMessageDialog(null, scrollPane, "Available Rooms", JOptionPane.PLAIN_MESSAGE);
+
+            rs.close();
+            stmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to fetch available rooms.");
+        }
+    }
+
+    public void chooseTable(int choice) {
+        // Logic for choosing a table
+        try {
+            PreparedStatement pstmt = conn.prepareStatement("UPDATE Tables SET IsOccupied = true WHERE TableNumber = ?");
+            pstmt.setInt(1, choice);
+            pstmt.executeUpdate();
+            pstmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void reserveRoom(int choice) {
+        // Logic for reserving a room
+        try {
+            PreparedStatement pstmt = conn.prepareStatement("UPDATE Rooms SET IsOccupied = true WHERE RoomNumber = ?");
+            pstmt.setInt(1, choice);
+            pstmt.executeUpdate();
+            pstmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void logOutTable(int choice) {
+        // Logic for logging out a table
+        try {
+            PreparedStatement pstmt = conn.prepareStatement("UPDATE Tables SET IsOccupied = false WHERE TableNumber = ?");
+            pstmt.setInt(1, choice);
+            pstmt.executeUpdate();
+            pstmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void logOutRoom(int choice) {
+        // Logic for logging out a room
+        try {
+            PreparedStatement pstmt = conn.prepareStatement("UPDATE Rooms SET IsOccupied = false WHERE RoomNumber = ?");
+            pstmt.setInt(1, choice);
+            pstmt.executeUpdate();
+            pstmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public boolean isTableAvailable(int tableNumber) {
+        try {
+            PreparedStatement pstmt = conn.prepareStatement("SELECT IsOccupied FROM Tables WHERE TableNumber = ?");
+            pstmt.setInt(1, tableNumber);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                boolean isOccupied = rs.getBoolean("IsOccupied");
+                rs.close();
+                pstmt.close();
+                return !isOccupied;
+            }
+            rs.close();
+            pstmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean isRoomAvailable(int roomNumber) {
+        try {
+            PreparedStatement pstmt = conn.prepareStatement("SELECT IsOccupied FROM Rooms WHERE RoomNumber = ?");
+            pstmt.setInt(1, roomNumber);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                boolean isOccupied = rs.getBoolean("IsOccupied");
+                rs.close();
+                pstmt.close();
+                return !isOccupied;
+            }
+            rs.close();
+            pstmt.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
+    public void insertOrderIntoDatabase(int foodChoice, int tableChoice, String customerName) {
+        try {
+            String insertOrderSQL = "INSERT INTO Orders (CustomerName, FoodID, TableID) VALUES (?, ?, ?)";
+            PreparedStatement insertOrderStatement = conn.prepareStatement(insertOrderSQL);
+            insertOrderStatement.setString(1, customerName);
+            insertOrderStatement.setInt(2, foodChoice);
+            insertOrderStatement.setInt(3, tableChoice);
+            insertOrderStatement.executeUpdate();
+            insertOrderStatement.close();
+            JOptionPane.showMessageDialog(this, "Order placed successfully.");
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to place order.");
+        }
+    }
+
+    public void insertRoomReservationIntoDatabase(int roomChoice, String customerName) {
+        try {
+            String insertReservationSQL = "INSERT INTO Reservations (CustomerName, RoomID, CheckInDate, CheckOutDate) VALUES (?, ?, ?, ?)";
+            PreparedStatement insertReservationStatement = conn.prepareStatement(insertReservationSQL);
+            insertReservationStatement.setString(1, customerName);
+            insertReservationStatement.setInt(2, roomChoice);
+            // You need to provide check-in and check-out dates. For simplicity, let's assume they are fixed.
+            insertReservationStatement.setDate(3, java.sql.Date.valueOf("2024-03-10")); // Example check-in date
+            insertReservationStatement.setDate(4, java.sql.Date.valueOf("2024-03-12")); // Example check-out date
+            insertReservationStatement.executeUpdate();
+            insertReservationStatement.close();
+            JOptionPane.showMessageDialog(this, "Room reservation made successfully.");
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to make room reservation.");
+        }
+    }
+
+    public boolean isValidInput(String input) {
+        return input != null && !input.isEmpty();
+    }
+    
+  
+  private void insertSampleData() {
+    try {
+        Statement stmt = conn.createStatement();
+
+        // Check if there are any existing tables
+        ResultSet tablesResultSet = stmt.executeQuery("SELECT COUNT(*) AS count FROM Tables");
+        tablesResultSet.next();
+        int tableCount = tablesResultSet.getInt("count");
+        tablesResultSet.close();
+
+        // If no tables exist, insert sample tables
+        if (tableCount == 0) {
+            String insertTablesSQL = "INSERT INTO Tables (TableNumber, Capacity, IsOccupied) VALUES ";
+            for (int i = 1; i <= 10; i++) {
+                insertTablesSQL += "(" + i + ", 4, false)";
+                if (i < 10) {
+                    insertTablesSQL += ",";
+                }
+            }
+            stmt.executeUpdate(insertTablesSQL);
+        }
+
+        // Check if there are any existing rooms
+        ResultSet roomsResultSet = stmt.executeQuery("SELECT COUNT(*) AS count FROM Rooms");
+        roomsResultSet.next();
+        int roomCount = roomsResultSet.getInt("count");
+        roomsResultSet.close();
+
+        // If no rooms exist, insert sample rooms
+        if (roomCount == 0) {
+            String insertRoomsSQL = "INSERT INTO Rooms (RoomNumber, Capacity, IsOccupied) VALUES ";
+            for (int i = 1; i <= 10; i++) {
+                insertRoomsSQL += "(" + (100 + i) + ", 4, false)";
+                if (i < 10) {
+                    insertRoomsSQL += ",";
+                }
+            }
+            stmt.executeUpdate(insertRoomsSQL);
+        }
+
+        stmt.close();
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+    try {
+        Statement stmt = conn.createStatement();
+
+        ResultSet resultSet = stmt.executeQuery("SHOW TABLES LIKE 'Food'");
+        boolean tableExists = resultSet.next();
+        resultSet.close();
+
+        // If the Food table doesn't exist, create it and insert sample data
+        if (!tableExists) {
+            String createFoodTableSQL = "CREATE TABLE Food ("
+                    + "FoodID INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "Name VARCHAR(255) NOT NULL,"
+                    + "Price DOUBLE NOT NULL,"
+                    + "Description TEXT"
+                    + ")";
+            stmt.executeUpdate(createFoodTableSQL);
+
+            String insertFoodSQL = "INSERT INTO Food (Name, Price, Description) VALUES "
+                    + "('Burger', 8.99, 'A classic beef burger with lettuce, tomato, and cheese.'),"
+                    + "('Pizza', 10.99, 'A delicious pizza topped with cheese, pepperoni, and bell peppers.'),"
+                    + "('Salad', 6.99, 'Fresh mixed greens with cherry tomatoes, cucumbers, and balsamic vinaigrette.'),"
+                    + "('Sandwich', 7.99, 'A hearty sandwich with turkey, bacon, lettuce, and mayo.'),"
+                    + "('Pasta', 12.99, 'Spaghetti pasta with marinara sauce and meatballs.'),"
+                    + "('Steak', 19.99, 'Juicy sirloin steak cooked to perfection, served with mashed potatoes and vegetables.'),"
+                    + "('Sushi', 15.99, 'Assorted sushi rolls including tuna, salmon, and California rolls.'),"
+                    + "('Chicken Wings', 9.99, 'Crispy chicken wings tossed in buffalo sauce, served with ranch dressing.'),"
+                    + "('Tacos', 8.99, 'Soft corn tortillas filled with seasoned ground beef, lettuce, and cheese.'),"
+                    + "('Fish and Chips', 11.99, 'Beer-battered fish fillets served with french fries and tartar sauce.')";
+
+            stmt.executeUpdate(insertFoodSQL);
+
+            JOptionPane.showMessageDialog(this, "Food table created and sample data inserted successfully.");
+        }
+
+        // Insert sample data into the Orders table if it doesn't exist
+        ResultSet ordersResultSet = stmt.executeQuery("SELECT COUNT(*) AS count FROM Orders");
+        ordersResultSet.next();
+        int orderCount = ordersResultSet.getInt("count");
+        ordersResultSet.close();
+        if (orderCount == 0) {
+            String insertOrdersSQL = "INSERT INTO Orders (customer_name, food_name, cost, table_id, check_in, check_out) VALUES "
+                    + "('John Doe', 'Burger', 8.99, 1, '2024-03-12 12:00:00', '2024-03-12 13:00:00'),"
+                    + "('Jane Smith', 'Pizza', 10.99, 2, '2024-03-12 13:00:00', '2024-03-12 14:00:00')";
+            stmt.executeUpdate(insertOrdersSQL);
+        }
+
+        // Insert sample data into the Reservations table if it doesn't exist
+        ResultSet reservationsResultSet = stmt.executeQuery("SELECT COUNT(*) AS count FROM Reservations");
+        reservationsResultSet.next();
+        int reservationCount = reservationsResultSet.getInt("count");
+        reservationsResultSet.close();
+        if (reservationCount == 0) {
+            String insertReservationsSQL = "INSERT INTO Reservations (reserve_name, reserve_check_in, reserve_check_out) VALUES "
+                    + "('Alice Johnson', '2024-03-14 14:00:00', '2024-03-16 12:00:00'),"
+                    + "('Bob Brown', '2024-03-15 15:00:00', '2024-03-17 11:00:00')";
+            stmt.executeUpdate(insertReservationsSQL);
+        }
+
+        stmt.close();
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Failed to create Food table and insert sample data.");
+    }
+}
+
+    public void displayDataInTable() {
+        try {
+            DefaultTableModel orderTableModel = new DefaultTableModel();
+            orderTableModel.addColumn("Customer Name");
+            orderTableModel.addColumn("Food ID");
+            orderTableModel.addColumn("Table ID");
+    
+            DefaultTableModel reservationTableModel = new DefaultTableModel();
+            reservationTableModel.addColumn("Room Number");
+            reservationTableModel.addColumn("Customer Name");
+            reservationTableModel.addColumn("Check-In Date");
+            reservationTableModel.addColumn("Check-Out Date");
+    
+            // Fetch data from the 'Orders' table
+            String selectOrdersSQL = "SELECT * FROM Orders";
+            Statement stmtOrders = conn.createStatement();
+            ResultSet orderResultSet = stmtOrders.executeQuery(selectOrdersSQL);
+            while (orderResultSet.next()) {
+                String customerName = orderResultSet.getString("CustomerName");
+                int foodID = orderResultSet.getInt("FoodID");
+                int tableID = orderResultSet.getInt("TableID");
+                orderTableModel.addRow(new Object[]{customerName, foodID, tableID});
+            }
+    
+            // Fetch data from the 'Reservations' table
+            String selectReservationsSQL = "SELECT * FROM Reservations";
+            Statement stmtReservations = conn.createStatement();
+            ResultSet reservationResultSet = stmtReservations.executeQuery(selectReservationsSQL);
+            while (reservationResultSet.next()) {
+                int roomNumber = reservationResultSet.getInt("RoomID");
+                String customerName = reservationResultSet.getString("CustomerName");
+                Date checkInDate = reservationResultSet.getDate("CheckInDate");
+                Date checkOutDate = reservationResultSet.getDate("CheckOutDate");
+                reservationTableModel.addRow(new Object[]{roomNumber, customerName, checkInDate, checkOutDate});
+            }
+    
+            JTable orderTable = new JTable(orderTableModel);
+            JScrollPane orderScrollPane = new JScrollPane(orderTable);
+            JTable reservationTable = new JTable(reservationTableModel);
+            JScrollPane reservationScrollPane = new JScrollPane(reservationTable);
+    
+            JPanel panel = new JPanel(new GridLayout(2, 1));
+            panel.add(orderScrollPane);
+            panel.add(reservationScrollPane);
+    
+            JOptionPane.showMessageDialog(this, panel, "Data Display", JOptionPane.PLAIN_MESSAGE);
+    
+            orderResultSet.close();
+            stmtOrders.close();
+            reservationResultSet.close();
+            stmtReservations.close();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to display data.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void exportDataToFile() {
+        try {
+            FileWriter writer = new FileWriter("data_export.txt");
+    
+            // Fetch and export data from the database
+            
+            // Fetch data from the 'CompanyData' table
+            String selectCompanyDataSQL = "SELECT * FROM CompanyData";
+            Statement stmtCompanyData = conn.createStatement();
+            ResultSet companyDataResultSet = stmtCompanyData.executeQuery(selectCompanyDataSQL);
+            
+            // Write company data
+            writer.write("Company Data:\n");
+            if (companyDataResultSet.next()) {
+                String companyName = companyDataResultSet.getString("companyName");
+                String address = companyDataResultSet.getString("address");
+                Date date = companyDataResultSet.getDate("date");
+                writer.write("Company Name: " + companyName + ", Address: " + address + ", Date: " + date + "\n");
+            } else {
+                // Create default CompanyData entry
+                writer.write("Company Name: Stille Liv Eat And Lodge\n");
+                writer.write("Address: Gumok, Mias, Katipunan Zamboanga Del Norte\n");
+                writer.write("Date: " + new java.sql.Date(System.currentTimeMillis()) + "\n");
+            }
+            writer.write("\n");
+            
+    
+            // Fetch data from the 'Orders' table
+            String selectOrdersSQL = "SELECT * FROM Orders";
+            Statement stmtOrders = conn.createStatement();
+            ResultSet orderResultSet = stmtOrders.executeQuery(selectOrdersSQL);
+    
+            // Write order details
+            writer.write("Order Details:\n");
+            while (orderResultSet.next()) {
+                String customerName = orderResultSet.getString("CustomerName");
+                int foodID = orderResultSet.getInt("FoodID");
+                int tableID = orderResultSet.getInt("TableID");
+                writer.write("Customer Name: " + customerName + ", Food ID: " + foodID + ", Table ID: " + tableID + "\n");
+            }
+            writer.write("\n");
+    
+            // Fetch data from the 'Tables' table
+            String selectTablesSQL = "SELECT * FROM Tables";
+            Statement stmtTables = conn.createStatement();
+            ResultSet tableResultSet = stmtTables.executeQuery(selectTablesSQL);
+    
+            // Write table status
+            writer.write("Table Status:\n");
+            while (tableResultSet.next()) {
+                int tableNumber = tableResultSet.getInt("TableNumber");
+                int capacity = tableResultSet.getInt("Capacity");
+                boolean isOccupied = tableResultSet.getBoolean("IsOccupied");
+                writer.write("Table Number: " + tableNumber + ", Capacity: " + capacity + ", Occupied: " + isOccupied + "\n");
+            }
+            writer.write("\n");
+    
+            // Fetch data from the 'Reservations' table
+            String selectReservationsSQL = "SELECT * FROM Reservations";
+            Statement stmtReservations = conn.createStatement();
+            ResultSet reservationResultSet = stmtReservations.executeQuery(selectReservationsSQL);
+    
+            // Write reservation status
+            writer.write("Reservation Status:\n");
+            while (reservationResultSet.next()) {
+                int roomNumber = reservationResultSet.getInt("RoomID");
+                String customerName = reservationResultSet.getString("CustomerName");
+                Date checkInDate = reservationResultSet.getDate("CheckInDate");
+                Date checkOutDate = reservationResultSet.getDate("CheckOutDate");
+                writer.write("Room Number: " + roomNumber + ", Customer Name: " + customerName + ", Check-In Date: " + checkInDate + ", Check-Out Date: " + checkOutDate + "\n");
+            }
+            writer.write("\n");
+    
+            // Fetch data from the 'Rooms' table
+            String selectRoomsSQL = "SELECT * FROM Rooms";
+            Statement stmtRooms = conn.createStatement();
+            ResultSet roomResultSet = stmtRooms.executeQuery(selectRoomsSQL);
+    
+            // Write room status
+            writer.write("Room Status:\n");
+            while (roomResultSet.next()) {
+                int roomNumber = roomResultSet.getInt("RoomNumber");
+                int capacity = roomResultSet.getInt("Capacity");
+                boolean isOccupied = roomResultSet.getBoolean("IsOccupied");
+                writer.write("Room Number: " + roomNumber + ", Capacity: " + capacity + ", Occupied: " + isOccupied + "\n");
+            }
+            writer.write("\n");
+    
+            // Close resources
+            writer.close();
+            companyDataResultSet.close();
+            stmtCompanyData.close();
+            orderResultSet.close();
+            stmtOrders.close();
+            tableResultSet.close();
+            stmtTables.close();
+            reservationResultSet.close();
+            stmtReservations.close();
+            roomResultSet.close();
+            stmtRooms.close();
+    
+            JOptionPane.showMessageDialog(this, "Data exported successfully to data_export.txt", "Export Successful", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException | SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to export data.", "Export Failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    
+private void showFoodDetails() {
+    try {
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery("SELECT * FROM Food");
+
+        DefaultTableModel model = new DefaultTableModel();
+        model.addColumn("Food ID");
+        model.addColumn("Food Name");
+        model.addColumn("Price");
+        model.addColumn("Description");
+
+        while (rs.next()) {
+            int foodID = rs.getInt("FoodID");
+            String foodName = rs.getString("Name");
+            double price = rs.getDouble("Price");
+            String description = rs.getString("Description");
+            model.addRow(new Object[]{foodID, foodName, price, description});
+        }
+
+        JTable table = new JTable(model);
+        JScrollPane scrollPane = new JScrollPane(table);
+        table.setFillsViewportHeight(true); // Makes the table adjust its size to fill the viewport
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS); // Adjusts column widths automatically
+
+        // Set preferred column widths
+        table.getColumnModel().getColumn(0).setPreferredWidth(200); // Food ID
+        table.getColumnModel().getColumn(1).setPreferredWidth(400); // Food Name
+        table.getColumnModel().getColumn(2).setPreferredWidth(200); // Price
+        table.getColumnModel().getColumn(3).setPreferredWidth(1000); // Description - increased width
+
+        JOptionPane.showMessageDialog(this, scrollPane, "Food Details", JOptionPane.PLAIN_MESSAGE);
+
+        rs.close();
+        stmt.close();
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Failed to fetch food details.", "Error", JOptionPane.ERROR_MESSAGE);
+    }
+}
+
+
+    public static void main(String[] args) {
+        new Receiptionist();
+    }
+}

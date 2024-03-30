@@ -1,0 +1,39 @@
+Company Data:
+
+Order Details:
+Customer Name: pj, Food ID: 5, Table ID: 1
+Customer Name: op, Food ID: 3, Table ID: 2
+Customer Name: paul, Food ID: 7, Table ID: 3
+Customer Name: petpet, Food ID: 8, Table ID: 4
+Customer Name: GEMMA, Food ID: 2, Table ID: 5
+Customer Name: bum, Food ID: 5, Table ID: 6
+Customer Name: jackie, Food ID: 7, Table ID: 1
+
+Table Status:
+Table Number: 1, Capacity: 4, Occupied: true
+Table Number: 2, Capacity: 4, Occupied: false
+Table Number: 3, Capacity: 4, Occupied: true
+Table Number: 4, Capacity: 4, Occupied: true
+Table Number: 5, Capacity: 4, Occupied: true
+Table Number: 6, Capacity: 4, Occupied: true
+Table Number: 7, Capacity: 4, Occupied: false
+Table Number: 8, Capacity: 4, Occupied: false
+Table Number: 9, Capacity: 4, Occupied: false
+Table Number: 10, Capacity: 4, Occupied: false
+
+Reservation Status:
+Room Number: 101, Customer Name: uy, Check-In Date: 2024-03-10, Check-Out Date: 2024-03-12
+Room Number: 102, Customer Name: uye, Check-In Date: 2024-03-10, Check-Out Date: 2024-03-12
+
+Room Status:
+Room Number: 101, Capacity: 4, Occupied: false
+Room Number: 102, Capacity: 4, Occupied: true
+Room Number: 103, Capacity: 4, Occupied: false
+Room Number: 104, Capacity: 4, Occupied: false
+Room Number: 105, Capacity: 4, Occupied: false
+Room Number: 106, Capacity: 4, Occupied: false
+Room Number: 107, Capacity: 4, Occupied: false
+Room Number: 108, Capacity: 4, Occupied: false
+Room Number: 109, Capacity: 4, Occupied: false
+Room Number: 110, Capacity: 4, Occupied: false
+

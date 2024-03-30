@@ -1,0 +1,211 @@
+package receiptionist;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+public class Receiptionist extends JFrame implements ActionListener {
+    static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+    static final String DB_URL = "jdbc:mysql://localhost/";
+    static final String DB_NAME = "lodgeandeat";
+    static final String USER = "root";
+    static final String PASS = "";
+
+    private JButton orderFoodButton, reserveRoomButton, exitButton;
+    private Connection conn;
+    private String customerName;
+
+    public Receiptionist() {
+        setTitle("Receptionist");
+        setSize(400, 300);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        // Connect to database
+        try {
+            Class.forName(JDBC_DRIVER);
+            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            createDatabaseTables();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new GridLayout(3, 1));
+
+        orderFoodButton = new JButton("Order Food");
+        orderFoodButton.addActionListener(this);
+        mainPanel.add(orderFoodButton);
+
+        reserveRoomButton = new JButton("Reserve Room");
+        reserveRoomButton.addActionListener(this);
+        mainPanel.add(reserveRoomButton);
+
+        exitButton = new JButton("Exit");
+        exitButton.addActionListener(this);
+        mainPanel.add(exitButton);
+
+        add(mainPanel);
+        setVisible(true);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == orderFoodButton) {
+            customerName = JOptionPane.showInputDialog("Enter your name:");
+            if (customerName != null && !customerName.isEmpty()) {
+                int foodChoice = displayFoodMenuAndGetChoice();
+                if (foodChoice != 0) {
+                    displayAvailableTables();
+                    String tableChoiceStr = JOptionPane.showInputDialog("Enter the number of the table you want to choose:");
+                    if (isValidInput(tableChoiceStr)) {
+                        int tableChoice = Integer.parseInt(tableChoiceStr);
+                        chooseTable(tableChoice);
+                        insertOrderIntoDatabase(foodChoice, tableChoice, customerName);
+                    }
+                }
+            }
+        } else if (e.getSource() == reserveRoomButton) {
+            customerName = JOptionPane.showInputDialog("Enter your name:");
+            if (customerName != null && !customerName.isEmpty()) {
+                displayAvailableRooms();
+                String roomChoiceStr = JOptionPane.showInputDialog("Enter the number of the room you want to reserve:");
+                if (isValidInput(roomChoiceStr)) {
+                    int roomChoice = Integer.parseInt(roomChoiceStr);
+                    reserveRoom(roomChoice);
+                    insertRoomReservationIntoDatabase(roomChoice, customerName);
+                }
+            }
+        } else if (e.getSource() == exitButton) {
+            dispose();
+        }
+    }
+
+    public int displayFoodMenuAndGetChoice() {
+        Object[] options = {"Burger", "Pizza", "Salad", "Sandwich", "Pasta", "Steak", "Sushi", "Chicken Wings", "Tacos", "Fish and Chips"};
+        int choice = JOptionPane.showOptionDialog(null, "Choose a food item", "Food Menu", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        return choice + 1; // Food IDs start from 1
+    }
+
+    public void displayAvailableTables() {
+        // Display available tables
+    }
+
+    public void chooseTable(int choice) {
+        // Logic for choosing a table
+    }
+
+    public void displayAvailableRooms() {
+        // Display available rooms
+    }
+
+    public void reserveRoom(int choice) {
+        // Logic for reserving a room
+    }
+
+    public void insertOrderIntoDatabase(int foodChoice, int tableChoice, String customerName) {
+        try {
+            String insertOrderSQL = "INSERT INTO `Orders` (CustomerName, FoodID, TableID) VALUES (?, ?, ?)";
+            PreparedStatement insertOrderStatement = conn.prepareStatement(insertOrderSQL);
+            insertOrderStatement.setString(1, customerName);
+            insertOrderStatement.setInt(2, foodChoice);
+            insertOrderStatement.setInt(3, tableChoice);
+            insertOrderStatement.executeUpdate();
+            insertOrderStatement.close();
+            JOptionPane.showMessageDialog(this, "Order placed successfully.");
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to place order.");
+        }
+    }
+
+    public void insertRoomReservationIntoDatabase(int roomChoice, String customerName) {
+        try {
+            String insertReservationSQL = "INSERT INTO Reservations (CustomerName, RoomID, CheckInDate, CheckOutDate) VALUES (?, ?, ?, ?)";
+            PreparedStatement insertReservationStatement = conn.prepareStatement(insertReservationSQL);
+            insertReservationStatement.setString(1, customerName);
+            insertReservationStatement.setInt(2, roomChoice);
+            // You need to provide check-in and check-out dates. For simplicity, let's assume they are fixed.
+            insertReservationStatement.setDate(3, java.sql.Date.valueOf("2024-03-10")); // Example check-in date
+            insertReservationStatement.setDate(4, java.sql.Date.valueOf("2024-03-12")); // Example check-out date
+            insertReservationStatement.executeUpdate();
+            insertReservationStatement.close();
+            JOptionPane.showMessageDialog(this, "Room reservation made successfully.");
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to make room reservation.");
+        }
+    }
+
+    public boolean isValidInput(String input) {
+        return input != null && !input.isEmpty();
+    }
+
+    private void createDatabaseTables() {
+        try {
+            Statement stmt = conn.createStatement();
+            // Create the database if it does not exist
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
+            // Switch to the database
+            stmt.executeUpdate("USE " + DB_NAME);
+
+            // Create Orders table
+            String createOrdersTableSQL = "CREATE TABLE IF NOT EXISTS Orders ("
+                    + "OrderID INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "CustomerName VARCHAR(255) NOT NULL,"
+                    + "FoodID INT NOT NULL,"
+                    + "TableID INT NOT NULL"
+                    + ")";
+            stmt.executeUpdate(createOrdersTableSQL);
+
+            // Create Reservations table
+            String createReservationsTableSQL = "CREATE TABLE IF NOT EXISTS Reservations ("
+                    + "ReservationID INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "CustomerName VARCHAR(255) NOT NULL,"
+                    + "RoomID INT NOT NULL,"
+                    + "CheckInDate DATE NOT NULL,"
+                    + "CheckOutDate DATE NOT NULL"
+                    + ")";
+            stmt.executeUpdate(createReservationsTableSQL);
+
+            // Create Food table
+            String createFoodTableSQL = "CREATE TABLE IF NOT EXISTS Food ("
+                    + "FoodID INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "Name VARCHAR(255) NOT NULL,"
+                    + "Price DECIMAL(10, 2) NOT NULL"
+                    + ")";
+            stmt.executeUpdate(createFoodTableSQL);
+
+            // Create Tables table
+            String createTablesTableSQL = "CREATE TABLE IF NOT EXISTS Tables ("
+                    + "TableID INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "TableNumber INT NOT NULL,"
+                    + "Capacity INT NOT NULL,"
+                    + "IsOccupied BOOLEAN NOT NULL"
+                    + ")";
+            stmt.executeUpdate(createTablesTableSQL);
+
+            // Create Rooms table
+            String createRoomsTableSQL = "CREATE TABLE IF NOT EXISTS Rooms ("
+                    + "RoomID INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "RoomNumber INT NOT NULL,"
+                    + "Capacity INT NOT NULL,"
+                    + "IsOccupied BOOLEAN NOT NULL"
+                    + ")";
+            stmt.executeUpdate(createRoomsTableSQL);
+
+            stmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        new Receiptionist();
+    }
+}
